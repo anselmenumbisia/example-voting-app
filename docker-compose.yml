@@ -7,15 +7,6 @@ services:
     build: ./vote
     # use python rather than gunicorn for local dev
     command: python app.py
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck: 
-      test: ["CMD", "curl", "-f", "http://localhost"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
     volumes:
      - ./vote:/app
     ports:
@@ -29,8 +20,7 @@ services:
     # use nodemon rather than node for local dev
     entrypoint: nodemon server.js
     depends_on:
-      db:
-        condition: service_healthy 
+      - db 
     volumes:
       - ./result:/app
     ports:
@@ -41,13 +31,9 @@ services:
       - back-tier
 
   worker:
-    build:
-      context: ./worker
+    build: ./worker
     depends_on:
-      redis:
-        condition: service_healthy 
-      db:
-        condition: service_healthy 
+      - redis    
     networks:
       - back-tier
 
@@ -55,14 +41,15 @@ services:
     image: redis:alpine
     volumes:
       - "./healthchecks:/healthchecks"
-    healthcheck:
-      test: /healthchecks/redis.sh
-      interval: "5s"
+    depends_on:
+      - vote
     networks:
       - back-tier
 
   db:
     image: postgres:15-alpine
+    depends_on:
+      - worker
     environment:
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
